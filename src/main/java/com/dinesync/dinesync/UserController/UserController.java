@@ -18,27 +18,35 @@ public class UserController {
 
     @Autowired
     UserService userService;
+
     @GetMapping("/")
-    public String hello(){
+    public String hello() {
         return "hello World";
     }
+
     @GetMapping("/user") //get request
-    public ResponseEntity<List<User>> getAllUsers(){
+    public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.getAll());
     }
+
     @PostMapping("/user")
     public ResponseEntity<User> saveUser(@RequestBody User user) {
         return ResponseEntity.ok(userService.addUser(user));
     }
 
     @DeleteMapping("/user/{id}")
-    public ResponseEntity<Optional<User>> deleteUser(@PathVariable Long id){
+    public ResponseEntity<Optional<User>> deleteUser(@PathVariable Long id) {
         return ResponseEntity.ok(userService.deleteUser(id));
     }
 
     @GetMapping("/user/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id){
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserbyId(id));
     }
-    }
 
+
+    @PutMapping("/user/{id}")
+    public ResponseEntity<User> updateUser(@RequestBody User user, @PathVariable Long id) {
+        return ResponseEntity.ok(userService.updateUser(id,user));
+    }
+}

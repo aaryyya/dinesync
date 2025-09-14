@@ -35,4 +35,29 @@ public class UserService {
         }
         return null;
     }
+
+//    public User updateUser(User newUser,Long id){
+//        Optional<User> userById=userRepository.findById(id);
+//        if(userById.isPresent()){
+//            userRepository.save(newUser);
+//            return userById.get();
+//        }
+//        return null;
+//
+//    }
+    public User updateUser(Long id, User user) {
+        Optional<User> updateUser = userRepository.findById(id);
+        if(updateUser.isPresent()) {
+            User newUser = updateUser.get();
+            if(user.getUserName() != null) {
+                newUser.setUserName(user.getUserName());
+            }
+            if(user.getEmail() != null) {
+                newUser.setEmail(user.getEmail());
+            }
+            userRepository.save(newUser);
+            return newUser;
+        }
+        return null;
+    }
 }
