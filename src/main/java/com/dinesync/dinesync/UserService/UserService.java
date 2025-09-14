@@ -16,27 +16,31 @@ import java.util.Optional;
 public class UserService {
     @Autowired
     UserRepository userRepository;
-    public List<User> getAll(){
+
+    public List<User> getAll() {
         return userRepository.findAll();
     }
-    public User addUser(User user) { return userRepository.save(user); }
 
-    public Optional<User> deleteUser(Long id){
-       Optional<User> delUser=userRepository.findById(id);
+    public User addUser(User user) {
+        return userRepository.save(user);
+    }
+
+    public Optional<User> deleteUser(Long id) {
+        Optional<User> delUser = userRepository.findById(id);
         delUser.ifPresent(user -> userRepository.delete(user));
-       return delUser;
+        return delUser;
 
     }
 
-    public User getUserbyId(Long id){
-        Optional<User> userById=userRepository.findById(id);
-        if(userById.isPresent()){
+    public User getUserbyId(Long id) {
+        Optional<User> userById = userRepository.findById(id);
+        if (userById.isPresent()) {
             return userById.get();
         }
         return null;
     }
 
-//    public User updateUser(User newUser,Long id){
+    //    public User updateUser(User newUser,Long id){
 //        Optional<User> userById=userRepository.findById(id);
 //        if(userById.isPresent()){
 //            userRepository.save(newUser);
@@ -47,12 +51,12 @@ public class UserService {
 //    }
     public User updateUser(Long id, User user) {
         Optional<User> updateUser = userRepository.findById(id);
-        if(updateUser.isPresent()) {
+        if (updateUser.isPresent()) {
             User newUser = updateUser.get();
-            if(user.getUserName() != null) {
+            if (user.getUserName() != null) {
                 newUser.setUserName(user.getUserName());
             }
-            if(user.getEmail() != null) {
+            if (user.getEmail() != null) {
                 newUser.setEmail(user.getEmail());
             }
             userRepository.save(newUser);
