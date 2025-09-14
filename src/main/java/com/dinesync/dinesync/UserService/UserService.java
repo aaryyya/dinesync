@@ -27,4 +27,12 @@ public class UserService {
        return delUser;
 
     }
+
+    public User getUserbyId(Long id){
+        Optional<User> userById=userRepository.findById(id);
+        if(userById.isPresent()){
+            return userById.get();
+        }
+        return null;
+    }
 }
