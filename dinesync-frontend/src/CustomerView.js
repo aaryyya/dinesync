@@ -164,21 +164,44 @@ function CustomerView() {
     useEffect(() => {
         if (!sessionUuid) return;
         const cleanup = connectSession(sessionUuid, (update) => {
-            if (update.orderId && update.status) {
-                setSentOrders((prev) =>
-                    prev.map((o) =>
-                        o.orderId === update.orderId ? { ...o, status: update.status } : o
-                    )
-                );
-                // W8 fix (Phase 3): only auto-switch tab on the first PREPARING push
-                if (update.status === 'PREPARING' && !hasShownPrep) {
-                    setHasShownPrep(true);
-                    setActiveTab('orders');
+            if (!update.orderId || !update.status) return;
+
+            setSentOrders((prev) => {
+                // Pass 1: try to match by real orderId (works after initial seeding)
+                const byId = prev.findIndex(o => o.orderId === update.orderId);
+                if (byId >= 0) {
+                    const updated = [...prev];
+                    updated[byId] = { ...updated[byId], status: update.status };
+                    return updated;
                 }
+
+                // Pass 2: RECEIVED confirmation — seed the real DB orderId into the
+                // first pending order that has a null orderId and matching item name.
+                // This is the fix for the root bug: without this, PREPARING/SERVED
+                // updates can never match because the local state has orderId: null.
+                if (update.status === 'RECEIVED') {
+                    const nullIdx = prev.findIndex(
+                        o => o.orderId === null && o.name === update.item
+                    );
+                    if (nullIdx >= 0) {
+                        const updated = [...prev];
+                        updated[nullIdx] = { ...updated[nullIdx], orderId: update.orderId };
+                        return updated;
+                    }
+                }
+
+                return prev;
+            });
+
+            // W8 fix (Phase 3): only auto-switch tab on the first PREPARING push
+            if (update.status === 'PREPARING' && !hasShownPrep) {
+                setHasShownPrep(true);
+                setActiveTab('orders');
             }
         });
         return cleanup;
     }, [sessionUuid]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
     const orderItem = (item) => {
         if (!sessionToken) { setError('No session.'); return; }

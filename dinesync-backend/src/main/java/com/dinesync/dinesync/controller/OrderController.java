@@ -45,14 +45,26 @@ public class OrderController {
             return;
         }
 
-        // Build kitchen broadcast — sessionId and client-supplied price NEVER broadcast (C2 fix, Phase 2)
+        // Build kitchen broadcast — sessionId and client-supplied price NEVER broadcast
         OrderMessage broadcast = new OrderMessage();
         broadcast.setOrderId(saved.getId());
         broadcast.setTable(orderMsg.getTable());
         broadcast.setItem(orderMsg.getItem());
-        broadcast.setPrice(saved.getPrice());    // server-canonical price, safe to show kitchen
+        broadcast.setPrice(saved.getPrice());
         broadcast.setStatus(OrderStatus.RECEIVED.name());
 
         messagingTemplate.convertAndSend("/topic/kitchen", broadcast);
+
+        // ROOT BUG FIX: also push to the customer's own session topic so the
+        // CustomerView can seed the real DB orderId into its local state.
+        //
+        // Without this, sentOrders has { orderId: null } and the customer's
+        // connectSession callback can never match incoming PREPARING / SERVED
+        // updates (which arrive with the real orderId from the DB).
+        //
+        // With this push, the RECEIVED message triggers an item-name match that
+        // upgrades the null orderId to the real one — all subsequent status pushes
+        // then match correctly by orderId.
+        messagingTemplate.convertAndSend("/topic/session/" + saved.getSessionUuid(), broadcast);
     }
 }
