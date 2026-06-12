@@ -1,0 +1,156 @@
+# DineSync — Multi-Agent Build Pipeline
+# Version: 1.0
+# Purpose: Orchestrates parallel backend/frontend builders with AI code review gates
+#          and mandatory human checkpoints between phases.
+#
+# HOW TO USE:
+#   This file documents the agent workflow. Each phase is triggered by
+#   the orchestrator agent after receiving human approval.
+#
+# AGENT MODELS:
+#   builder_model: claude-sonnet-4-6-thinking  (fast, implementation-focused)
+#   reviewer_model: claude-opus                (slower, rigorous code review)
+
+name: DineSync Multi-Agent Build Pipeline
+version: "1.0"
+
+# ─────────────────────────────────────────
+# AGENT DEFINITIONS
+# ─────────────────────────────────────────
+agents:
+
+  - id: backend-builder
+    role: Spring Boot Developer
+    model: claude-sonnet-4-6-thinking
+    workspace: share          # Shares the parent's repo directory
+    capabilities:
+      - write_files
+      - run_commands
+    responsibilities:
+      - Implement all Spring Boot / Java changes
+      - Run Maven builds to verify compilation
+      - Never touch frontend files (src/ in dinesync-frontend)
+    output_format: |
+      Report as: { "status": "done|failed", "files_changed": [...], "build_result": "..." }
+
+  - id: frontend-builder
+    role: React Developer
+    model: claude-sonnet-4-6-thinking
+    workspace: share          # Shares the parent's repo directory
+    capabilities:
+      - write_files
+      - run_commands
+    responsibilities:
+      - Implement all React / JS changes
+      - Run npm install for new dependencies
+      - Never touch backend files (src/main/java)
+    output_format: |
+      Report as: { "status": "done|failed", "files_changed": [...], "install_result": "..." }
+
+  - id: code-reviewer
+    role: Senior Code Reviewer
+    model: claude-opus
+    workspace: inherit
+    capabilities:
+      - read_files
+    persona: |
+      You are a brutally honest senior engineer with 15 years of Java + React experience.
+      You catch security holes, performance pitfalls, and architectural anti-patterns.
+      You are NOT a yes-man. Flag every real issue clearly with severity: CRITICAL | WARN | INFO.
+    review_checklist:
+      security:
+        - JWT secret strength (>= 256-bit key)
+        - SQL injection surface area
+        - CORS policy too permissive?
+        - Session token stored securely in client?
+      performance:
+        - N+1 query risks in JPA repositories
+        - WebSocket connection leak potential
+        - Unnecessary DB calls on every WS message
+      code_quality:
+        - Lombok usage appropriate
+        - Exception handling coverage
+        - Magic strings / magic numbers
+        - Duplicate logic
+      architecture:
+        - Layer separation (Controller → Service → Repository)
+        - Transaction boundaries correct
+        - Scheduler thread safety
+    output_format: |
+      ## Code Review — Phase {phase}
+      ### ✅ Approved Items
+      ### ⚠️ Warnings (address before next phase)
+      ### 🚫 Critical Issues (must fix before proceeding)
+      ### 📝 Nitpicks (optional improvements)
+
+# ─────────────────────────────────────────
+# PIPELINE PHASES
+# ─────────────────────────────────────────
+pipeline:
+
+  - phase: 2
+    name: "Session Core"
+    description: |
+      JWT-based check-in, customer_sessions + orders DB tables,
+      sessionId validation on WebSocket orders, react-router-dom routing.
+    agents_parallel:
+      - backend-builder
+      - frontend-builder
+    on_complete:
+      - trigger: code-reviewer
+        scope: "Phase 2 — all changed files"
+      - trigger: human-checkpoint
+        message: |
+          Phase 2 complete. Code review attached.
+          Please review and type APPROVE to continue to Phase 3,
+          or describe any changes you want made first.
+
+  - phase: 3
+    name: "Kitchen Intelligence"
+    description: |
+      PUT /api/orders/{orderId}/status endpoint, RECEIVED→PREPARING→SERVED lifecycle,
+      targeted WebSocket push to customer phone, order status UI with progress bar.
+    requires_human_approval: true
+    agents_parallel:
+      - backend-builder
+      - frontend-builder
+    on_complete:
+      - trigger: code-reviewer
+        scope: "Phase 3 — all changed files"
+      - trigger: human-checkpoint
+        message: |
+          Phase 3 complete. Kitchen intelligence is live.
+          Review the code audit and type APPROVE to continue to Phase 4.
+
+  - phase: 4
+    name: "Time-Based Billing"
+    description: |
+      @Scheduled zombie session cleaner, GET /api/sessions/{sessionId}/bill
+      with TIMESTAMPDIFF SQL, itemized bill React view.
+    requires_human_approval: true
+    agents_parallel:
+      - backend-builder
+      - frontend-builder
+    on_complete:
+      - trigger: code-reviewer
+        scope: "Phase 4 — all changed files"
+      - trigger: human-checkpoint
+        message: |
+          Phase 4 complete. Full billing system is live.
+          Final code review attached. Type DONE to conclude.
+
+# ─────────────────────────────────────────
+# HUMAN CHECKPOINT PROTOCOL
+# ─────────────────────────────────────────
+human_checkpoint:
+  how_it_works: |
+    After each phase, the orchestrator agent will:
+    1. Post a summary of what was built
+    2. Attach the AI code review report
+    3. Wait for your explicit "APPROVE" before proceeding
+    4. If you describe changes, the appropriate builder agent is re-invoked
+  commands:
+    - APPROVE: proceeds to next phase
+    - REDO [description]: re-runs the phase with your feedback
+    - SKIP REVIEW: bypasses code review (not recommended)
+    - STOP: halts the pipeline

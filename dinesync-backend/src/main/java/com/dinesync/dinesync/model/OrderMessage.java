@@ -1,31 +1,17 @@
 package com.dinesync.dinesync.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class OrderMessage {
-
-    private int table;
-    private String item;
-
-    public OrderMessage() {
-    }
-
-    public OrderMessage(int table, String item) {
-        this.table = table;
-        this.item = item;
-    }
-
-    public int getTable() {
-        return table;
-    }
-
-    public void setTable(int table) {
-        this.table = table;
-    }
-
-    public String getItem() {
-        return item;
-    }
-
-    public void setItem(String item) {
-        this.item = item;
-    }
+    private Long    orderId;     // Set by backend after persisting; null on first broadcast to customer
+    private Integer table;       // N2 fix: Integer (boxed) so missing field deserialises as null, not 0
+    private String  item;
+    private String  sessionId;   // JWT — validated by OrderController, NEVER broadcast to clients
+    private String  status;      // Used for status-update pushes (Phase 3+)
+    private Integer price;       // Phase 4: stored in DB for billing; sent by customer at order time
 }

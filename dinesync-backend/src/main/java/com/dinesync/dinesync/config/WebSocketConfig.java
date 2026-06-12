@@ -12,19 +12,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-
-        // clients subscribe here
-        config.enableSimpleBroker("/topic");
-
-        // clients send here
+        // /topic  — broadcast (1-to-many): kitchen feed, errors
+        // /queue  — targeted (1-to-1): per-session status updates (Phase 3)
+        config.enableSimpleBroker("/topic", "/queue");
         config.setApplicationDestinationPrefixes("/app");
+        config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-
+        // W9 fix: explicit origins instead of wildcard — prevents rogue websites
+        // from opening WebSocket connections to this server
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns(
+                    "http://localhost:3000",
+                    "http://localhost:3001"
+                )
                 .withSockJS();
     }
 }
